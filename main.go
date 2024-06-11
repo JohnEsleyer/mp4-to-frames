@@ -86,6 +86,9 @@ func runGUI() {
 		}, w)
 	})
 
+	progressBar := widget.NewProgressBarInfinite()
+	progressBar.Hide()
+
 	extractBtn := widget.NewButton("Extract Frames", func() {
 		inputFile := inputEntry.Text
 		outputDir := outputEntry.Text
@@ -109,17 +112,24 @@ func runGUI() {
 
 		outputPattern := filepath.Join(outputDir, "frame_%04d.png")
 
-		cmd := exec.Command("ffmpeg", "-i", inputFile, outputPattern)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+		go func() {
+			progressBar.Show()
 
-		err := cmd.Run()
-		if err != nil {
-			dialog.ShowError(fmt.Errorf("failed to execute ffmpeg command: %s", err), w)
-			return
-		}
+			cmd := exec.Command("ffmpeg", "-i", inputFile, outputPattern)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
 
-		dialog.ShowInformation("Success", "Frames extracted successfully to "+outputDir, w)
+			err := cmd.Run()
+
+			progressBar.Hide()
+
+			if err != nil {
+				dialog.ShowError(fmt.Errorf("failed to execute ffmpeg command: %s", err), w)
+				return
+			}
+
+			dialog.ShowInformation("Success", "Frames extracted successfully to "+outputDir, w)
+		}()
 	})
 
 	w.SetContent(container.NewVBox(
@@ -127,6 +137,7 @@ func runGUI() {
 		selectFileBtn,
 		outputEntry,
 		extractBtn,
+		progressBar,
 	))
 
 	w.ShowAndRun()
